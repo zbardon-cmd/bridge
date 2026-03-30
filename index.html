@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>The BRIDGE</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; background: #F8F5F0; font-family: 'Georgia', serif; }
+
+canvas#c {
+  position: fixed; top: 0; left: 0;
+  width: 100%; height: 100%; display: block;
+}
+
+/* ---- LOGIN ---- */
+#login {
+  position: fixed; inset: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: center;
+  background: #F8F5F0;
+}
+.lcard {
+  width: min(300px, 86vw);
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+  padding: 44px 32px;
+  border: 1.5px solid rgba(26,63,160,.5); border-radius: 8px;
+  background: #fff;
+}
+.lcard svg { color: #1a3fa0; }
+.ltitle { font-size: 19px; color: #1a3fa0; letter-spacing: .07em; text-align: center; }
+.lsub { font-size: 11.5px; color: #8890a8; text-align: center; font-style: italic; font-family: sans-serif; line-height: 1.5; }
+.lpw {
+  width: 100%; padding: 10px 14px;
+  border: 1.5px solid #ccd; border-radius: 6px;
+  font-family: 'Georgia', serif; font-size: 15px;
+  text-align: center; letter-spacing: .14em;
+  background: #F8F5F0; outline: none; transition: border-color .2s;
+}
+.lpw:focus { border-color: #1a3fa0; }
+.lbtn {
+  width: 100%; padding: 10px; border: 1.5px solid #1a3fa0;
+  border-radius: 6px; background: transparent;
+  color: #1a3fa0; font-family: 'Georgia', serif; font-size: 14px;
+  letter-spacing: .07em; cursor: pointer; transition: background .18s;
+}
+.lbtn:hover { background: #eaeff8; }
+.lerr { font-size: 12px; color: #b02020; min-height: 16px; font-family: sans-serif; }
+
+/* ---- UPLOAD SCREEN ---- */
+#upload-screen {
+  position: fixed; inset: 0; z-index: 30;
+  display: flex; align-items: center; justify-content: center;
+  background: #F8F5F0;
+}
+.ucard {
+  width: min(300px, 86vw);
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+  padding: 44px 32px; text-align: center;
+  border: 1.5px solid rgba(26,63,160,.4); border-radius: 8px;
+  background: white;
+}
+.ucard .icon { color: #1a3fa0; }
+.utitle { font-size: 17px; color: #1a3fa0; letter-spacing: .06em; }
+.uhint { font-size: 12px; color: #8890a8; font-family: sans-serif; font-style: italic; line-height: 1.6; }
+.ubtn {
+  padding: 10px 28px; border: 1.5px solid #1a3fa0; border-radius: 6px;
+  background: transparent; color: #1a3fa0;
+  font-family: 'Georgia', serif; font-size: 14px; letter-spacing: .06em;
+  cursor: pointer; transition: background .18s;
+}
+.ubtn:hover { background: #eaeff8; }
+
+/* ---- PROCESSING ---- */
+#proc {
+  display: none; position: fixed; inset: 0; z-index: 25;
+  flex-direction: column; align-items: center; justify-content: center;
+  background: rgba(248,245,240,.92); gap: 16px;
+}
+.proc-text { font-size: 13px; color: #1a3fa0; font-family: sans-serif; letter-spacing: .12em; }
+.spinner {
+  width: 28px; height: 28px; border: 2px solid rgba(26,63,160,.15);
+  border-top-color: #1a3fa0; border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---- UI BAR (bottom) ---- */
+#ui {
+  display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
+  flex-direction: column; gap: 8px;
+  padding: 10px 14px 18px;
+  background: rgba(248,245,240,.84);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  border-top: 1px solid rgba(26,63,160,.12);
+}
+.ui-top { display: flex; align-items: center; gap: 10px; }
+#status-label { flex: 1; font-size: 10px; color: #8890a8; letter-spacing: .16em; text-transform: uppercase; font-family: sans-serif; text-align: center; }
+#gender-tag { font-size: 10px; color: rgba(26,63,160,.6); font-family: sans-serif; letter-spacing: .08em; white-space: nowrap; }
+
+.ic-btn {
+  width: 38px; height: 38px; border-radius: 50%;
+  border: 1px solid rgba(26,63,160,.4); background: transparent;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: rgba(26,63,160,.8); flex-shrink: 0; transition: background .15s, transform .1s;
+}
+.ic-btn:hover { background: rgba(26,63,160,.07); }
+.ic-btn:active { transform: scale(.95); }
+#mic-btn { width: 48px; height: 48px; border: 1.5px solid rgba(26,63,160,.6); }
+#mic-btn.on { border-color: #b02020; background: rgba(176,32,32,.1); color: #b02020; }
+
+#chat { max-height: 170px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+#chat::-webkit-scrollbar { width: 3px; }
+#chat::-webkit-scrollbar-thumb { background: rgba(26,63,160,.2); border-radius: 2px; }
+.bub { padding: 7px 11px; border-radius: 8px; font-size: 13px; line-height: 1.55; max-width: 86%; animation: fu .18s ease; }
+@keyframes fu { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
+.bub.user { align-self:flex-end; background:rgba(26,63,160,.07); border:1px solid rgba(26,63,160,.14); color:#1a2a5a; border-bottom-right-radius:3px; }
+.bub.ai   { align-self:flex-start; background:#fff; border:1px solid rgba(26,63,160,.18); color:#1a2a5a; border-bottom-left-radius:3px; }
+#hint { font-size: 11px; color: #aab; text-align: center; font-style: italic; font-family: sans-serif; }
+
+/* ---- LISTEN RING ---- */
+#ring { display:none; position:fixed; inset:0; pointer-events:none; z-index:15; border: 2px solid rgba(26,63,160,.4); animation: rng 1.2s ease-in-out infinite; }
+@keyframes rng { 0%,100%{opacity:.2} 50%{opacity:.9} }
+#ring.on { display:block; }
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+<div id="ring"></div>
+
+<!-- LOGIN -->
+<div id="login">
+  <div class="lcard">
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    </svg>
+    <div class="ltitle">The BRIDGE</div>
+    <div class="lsub">Talk to Anyone</div>
+    <input type="password" id="pw" class="lpw" placeholder="password" autocomplete="current-password"/>
+    <button class="lbtn" onclick="doLogin()">Enter</button>
+    <div class="lerr" id="lerr"></div>
+  </div>
+</div>
+
+<!-- UPLOAD SCREEN -->
+<div id="upload-screen" style="display:none">
+  <div class="ucard" id="drop-zone">
+    <svg class="icon" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+    </svg>
+    <div class="utitle">The BRIDGE</div>
+    <div class="uhint">Aplikácia ju prekreslí modrou ceruzkou, detekuje pohlavie a nastaví hlas. Pri nahratí novej fotky sa všetko prerenderuje.</div>
+    <button class="ubtn" id="pick-btn">Vybrať súbor</button>
+    <div class="uhint" style="font-size:11px">alebo pretiahnite fotku sem · JPG PNG WEBP</div>
+  </div>
+</div>
+
+<!-- PROCESSING -->
+<div id="proc">
+  <div class="spinner"></div>
+  <div class="proc-text" id="proc-text">Kreslím skicu…</div>
+</div>
+
+<!-- UI BAR -->
+<div id="ui">
+  <div id="chat"></div>
+  <div id="hint">Klikni na mikrofón a hovor…</div>
+  <div class="ui-top">
+    <button class="ic-btn" id="new-photo-btn" title="Nahrať novú fotku">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+    </button>
+    <div id="gender-tag"></div>
+    <div id="status-label">Pripravená</div>
+    <button id="mic-btn" class="ic-btn" title="Hovoriť">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="2" width="6" height="12" rx="3"/>
+        <path d="M5 10a7 7 0 0014 0"/>
+        <line x1="12" y1="17" x2="12" y2="22"/>
+        <line x1="8" y1="22" x2="16" y2="22"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<input type="file" id="file-in" accept="image/*" style="display:none">
+
+<script>
+// ============================================================
+//  CONFIG — uprav pred nasadením
+// ============================================================
+const CFG = {
+  password: 'malyprinc',
+  apiKey:   'YOUR_ANTHROPIC_API_KEY',
+  maxPx:    760,   // max dimension for sketch processing
+  blurR:    17,    // blur radius (higher = lighter/softer sketch)
+  ink:  { r:18,  g:50,  b:152 },   // blue pencil color
+  paper:{ r:248, g:245, b:240 }    // warm paper color
+};
+
+// ============================================================
+//  STATE
+// ============================================================
+let sketchCvs  = null;   // offscreen canvas with rendered sketch
+let landmarks  = null;   // { leftEye, rightEye, mouth } in sketch-canvas px
+let detGender  = 'female';
+let chatHistory = [];
+
+// Render geometry (sketch → screen)
+let rX=0, rY=0, rW=0, rH=0, dsx=1, dsy=1;
+
+// Animation
+let mouth=0, tMouth=0, speakT=0;
+let blinkAnim=null, blinkP=0;
+let lastT=performance.now();
+let cs='idle', recog=null, afGo=false;
+let blinkTmr;
+
+// ============================================================
+//  DOM
+// ============================================================
+const $c        = document.getElementById('c');
+const ctx       = $c.getContext('2d');
+const $login    = document.getElementById('login');
+const $upload   = document.getElementById('upload-screen');
+const $proc     = document.getElementById('proc');
+const $procTxt  = document.getElementById('proc-text');
+const $ui       = document.getElementById('ui');
+const $status   = document.getElementById('status-label');
+const $mic      = document.getElementById('mic-btn');
+const $chat     = document.getElementById('chat');
+const $hint     = document.getElementById('hint');
+const $gender   = document.getElementById('gender-tag');
+const $ring     = document.getElementById('ring');
+const $fileIn   = document.getElementById('file-in');
+
+// ============================================================
+//  CANVAS RESIZE
+// ============================================================
+function resizeCvs() {
+  $c.width  = window.innerWidth;
+  $c.height = window.innerHeight;
+  if (sketchCvs) computeRenderRect();
+}
+window.addEventListener('resize', resizeCvs);
+resizeCvs();
+
+function computeRenderRect() {
+  const W=$c.width, H=$c.height;
+  const iW=sketchCvs.width, iH=sketchCvs.height;
+  const scale = Math.min(W/iW, H/iH);
+  rW=iW*scale; rH=iH*scale;
+  rX=(W-rW)/2; rY=(H-rH)/2;
+  dsx=rW/iW; dsy=rH/iH;
+}
+
+// ============================================================
+//  LOGIN
+// ============================================================
+document.getElementById('pw').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+function doLogin() {
+  if (document.getElementById('pw').value === CFG.password) {
+    $login.style.display = 'none';
+    $upload.style.display = 'flex';
+  } else {
+    document.getElementById('lerr').textContent = 'Nesprávne heslo.';
+    document.getElementById('pw').value = '';
+  }
+}
+
+// ============================================================
+//  UPLOAD TRIGGERS
+// ============================================================
+document.getElementById('pick-btn').addEventListener('click', () => $fileIn.click());
+document.getElementById('new-photo-btn').addEventListener('click', () => $fileIn.click());
+$fileIn.addEventListener('change', () => { if ($fileIn.files[0]) handleFile($fileIn.files[0]); $fileIn.value=''; });
+
+const $dz = document.getElementById('drop-zone');
+$dz.addEventListener('dragover', e => { e.preventDefault(); $dz.style.background='#eaeff8'; });
+$dz.addEventListener('dragleave', () => { $dz.style.background=''; });
+$dz.addEventListener('drop', e => { e.preventDefault(); $dz.style.background=''; const f=e.dataTransfer.files[0]; if(f&&f.type.startsWith('image/')) handleFile(f); });
+
+$c.addEventListener('dragover', e => e.preventDefault());
+$c.addEventListener('drop', e => { e.preventDefault(); const f=e.dataTransfer.files[0]; if(f&&f.type.startsWith('image/')) handleFile(f); });
+
+// ============================================================
+//  FILE HANDLER
+// ============================================================
+async function handleFile(file) {
+  $upload.style.display = 'none';
+  $ui.style.display = 'none';
+  showProc('Načítavam fotku…');
+
+  const dataURL = await readFile(file);
+  const img = await loadImg(dataURL);
+
+  // Scale image to CFG.maxPx
+  const sc = Math.min(1, CFG.maxPx / Math.max(img.naturalWidth, img.naturalHeight));
+  const pW = Math.round(img.naturalWidth  * sc);
+  const pH = Math.round(img.naturalHeight * sc);
+
+  const tmp = document.createElement('canvas');
+  tmp.width=pW; tmp.height=pH;
+  tmp.getContext('2d').drawImage(img, 0, 0, pW, pH);
+
+  showProc('Kreslím skicu…');
+  await tick(30); // let UI update
+
+  // Compute sketch
+  const skData = computeSketch(tmp.getContext('2d').getImageData(0,0,pW,pH));
+
+  // Store to offscreen canvas
+  sketchCvs = document.createElement('canvas');
+  sketchCvs.width=pW; sketchCvs.height=pH;
+  sketchCvs.getContext('2d').putImageData(skData, 0, 0);
+  computeRenderRect();
+
+  // Draw immediately so user sees it during analysis
+  drawFrame();
+
+  showProc('Analyzujem tvár…');
+  const b64 = tmp.toDataURL('image/jpeg', 0.82).split(',')[1];
+  const info = await detectFace(b64, pW, pH);
+
+  hideProc();
+  $ui.style.display = 'flex';
+
+  if (info) {
+    landmarks  = { leftEye:info.leftEye, rightEye:info.rightEye, mouth:info.mouth };
+    detGender  = (info.gender||'female').toLowerCase().includes('male') &&
+                 !(info.gender||'').toLowerCase().includes('female') ? 'male' : 'female';
+    $gender.textContent = detGender === 'female' ? '♀ ženský hlas' : '♂ mužský hlas';
+  } else {
+    landmarks = null;
+    $gender.textContent = '';
+  }
+
+  chatHistory = [];
+
+  if (!afGo) { afGo=true; requestAnimationFrame(animLoop); }
+  clearTimeout(blinkTmr); scheduleBlink();
+}
+
+const readFile = f => new Promise((res,rej) => { const r=new FileReader(); r.onload=e=>res(e.target.result); r.onerror=rej; r.readAsDataURL(f); });
+const loadImg  = src => new Promise((res,rej) => { const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=src; });
+const tick     = ms => new Promise(r => setTimeout(r, ms));
+
+function showProc(txt) { $procTxt.textContent=txt; $proc.style.display='flex'; }
+function hideProc()    { $proc.style.display='none'; }
+
+// ============================================================
+//  SKETCH ALGORITHM  (colour dodge pencil sketch → blue)
+// ============================================================
+function computeSketch(id) {
+  const w=id.width, h=id.height, px=id.data, n=w*h;
+
+  // 1. Grayscale
+  const gray = new Float32Array(n);
+  for (let i=0;i<n;i++) gray[i] = 0.299*px[i*4] + 0.587*px[i*4+1] + 0.114*px[i*4+2];
+
+  // 2. Invert
+  const inv = new Float32Array(n);
+  for (let i=0;i<n;i++) inv[i] = 255 - gray[i];
+
+  // 3. Box blur (O(w·h) sliding window, two passes)
+  const blr = boxBlur(inv, w, h, CFG.blurR);
+
+  // 4. Colour dodge: sketch = gray / (1 - blr/255)
+  const sk = new Float32Array(n);
+  for (let i=0;i<n;i++) {
+    const b=blr[i];
+    sk[i] = b >= 254 ? 255 : Math.min(255, gray[i]*255/(255-b));
+  }
+
+  // 5. Contrast remap + blue coloring
+  const {r:ir,g:ig,b:ib} = CFG.ink;
+  const {r:pr,g:pg,b:pb} = CFG.paper;
+  const out = new Uint8ClampedArray(n*4);
+
+  for (let i=0;i<n;i++) {
+    let s = sk[i]/255;
+    s = Math.pow(s, 0.7);                        // gamma: more visible lines
+    s = Math.max(0, Math.min(1,(s-0.06)/0.9));   // remap contrast
+    out[i*4]   = Math.round(ir + (pr-ir)*s);
+    out[i*4+1] = Math.round(ig + (pg-ig)*s);
+    out[i*4+2] = Math.round(ib + (pb-ib)*s);
+    out[i*4+3] = 255;
+  }
+  return new ImageData(out, w, h);
+}
+
+function boxBlur(src, w, h, r) {
+  const tmp = new Float32Array(w*h);
+  const out = new Float32Array(w*h);
+
+  // Horizontal pass
+  for (let y=0;y<h;y++) {
+    const row=y*w;
+    let sum=0, cnt=0;
+    for (let d=0;d<=r&&d<w;d++) { sum+=src[row+d]; cnt++; }
+    for (let x=0;x<w;x++) {
+      tmp[row+x] = sum/cnt;
+      const a=x+r+1; if(a<w){ sum+=src[row+a]; cnt++; }
+      const b=x-r;   if(b>=0){ sum-=src[row+b]; cnt--; }
+    }
+  }
+
+  // Vertical pass
+  for (let x=0;x<w;x++) {
+    let sum=0, cnt=0;
+    for (let d=0;d<=r&&d<h;d++) { sum+=tmp[d*w+x]; cnt++; }
+    for (let y=0;y<h;y++) {
+      out[y*w+x] = sum/cnt;
+      const a=y+r+1; if(a<h){ sum+=tmp[a*w+x]; cnt++; }
+      const b=y-r;   if(b>=0){ sum-=tmp[b*w+x]; cnt--; }
+    }
+  }
+  return out;
+}
+
+// ============================================================
+//  FACE DETECTION (Claude Vision) — landmarks + gender
+// ============================================================
+async function detectFace(b64, W, H) {
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'x-api-key':CFG.apiKey, 'anthropic-version':'2023-06-01' },
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514', max_tokens:600,
+        messages:[{ role:'user', content:[
+          { type:'image', source:{ type:'base64', media_type:'image/jpeg', data:b64 } },
+          { type:'text',  text:`Image is ${W}×${H}px. Return ONLY valid JSON (no markdown, no extra text):
+{"gender":"male or female","leftEye":{"cx":0,"cy":0,"rx":0,"ry":0},"rightEye":{"cx":0,"cy":0,"rx":0,"ry":0},"mouth":{"cx":0,"cy":0,"width":0,"height":0,"topY":0,"bottomY":0}}
+gender = apparent biological sex of the face. All coordinates in image pixels. Eye: cx/cy=center ellipse, rx/ry=half-axes. Mouth: cx/cy=center, topY=top lip edge, bottomY=bottom lip edge.` }
+        ]}]
+      })
+    });
+    if (!res.ok) { console.error('detect HTTP', res.status); return null; }
+    const data = await res.json();
+    const txt = data.content?.find(b=>b.type==='text')?.text||'';
+    return JSON.parse(txt.replace(/```[\w]*/g,'').replace(/```/g,'').trim());
+  } catch(e) { console.error('detectFace:', e); return null; }
+}
+
+// ============================================================
+//  ANIMATION LOOP
+// ============================================================
+function animLoop(ts) {
+  const dt = Math.min((ts-lastT)/1000, .05);
+  lastT = ts;
+
+  // Mouth
+  if (cs==='speaking') {
+    speakT += dt;
+    tMouth = .26 + .64 * Math.abs(Math.sin(speakT*9.2)) * (.55 + .45*Math.abs(Math.sin(speakT*4.1)));
+  } else tMouth=0;
+  mouth += (tMouth-mouth)*Math.min(1, dt*20);
+
+  // Blink
+  if (blinkAnim) {
+    blinkAnim.t += dt;
+    const h=blinkAnim.dur/2;
+    blinkP = blinkAnim.t<h ? blinkAnim.t/h : 1-(blinkAnim.t-h)/h;
+    blinkP = Math.max(0,Math.min(1,blinkP));
+    if (blinkAnim.t>=blinkAnim.dur) { blinkAnim=null; blinkP=0; }
+  }
+
+  drawFrame();
+  requestAnimationFrame(animLoop);
+}
+
+function drawFrame() {
+  const W=$c.width, H=$c.height;
+  const {r,g,b} = CFG.paper;
+  ctx.fillStyle=`rgb(${r},${g},${b})`;
+  ctx.fillRect(0,0,W,H);
+
+  if (!sketchCvs) return;
+  ctx.drawImage(sketchCvs, rX, rY, rW, rH);
+
+  if (!landmarks) return;
+  const le = sEye(landmarks.leftEye);
+  const re = sEye(landmarks.rightEye);
+  const m  = sMouth(landmarks.mouth);
+
+  if (mouth > 0.012) drawMouth(m);
+  if (blinkP > 0.012) { drawLid(le); drawLid(re); }
+}
+
+// Scale landmark from sketch-canvas space → screen space
+function sEye(e)  { return { cx:e.cx*dsx+rX, cy:e.cy*dsy+rY, rx:e.rx*dsx, ry:e.ry*dsy }; }
+function sMouth(m){ return { cx:m.cx*dsx+rX, cy:m.cy*dsy+rY, topY:m.topY*dsy+rY, bottomY:m.bottomY*dsy+rY, width:m.width*dsx, height:m.height*dsy }; }
+
+// ============================================================
+//  DRAW OVERLAYS (paper fill + blue ink)
+// ============================================================
+const PAPER = ()=>`rgb(${CFG.paper.r},${CFG.paper.g},${CFG.paper.b})`;
+const INK   = ()=>`rgb(${CFG.ink.r},${CFG.ink.g},${CFG.ink.b})`;
+
+function drawLid(e) {
+  const {cx,cy,rx,ry}=e;
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(cx,cy,rx*1.14,ry*1.18,0,0,Math.PI*2);
+  ctx.clip();
+  ctx.fillStyle = PAPER();
+  ctx.fillRect(cx-rx*1.15, cy-ry*1.18, rx*2.3, ry*2.36*blinkP);
+  if (blinkP > 0.28) {
+    const cy2 = (cy-ry*1.18) + ry*2.36*blinkP - ry*0.22;
+    ctx.strokeStyle = INK();
+    ctx.lineWidth = Math.max(1, ry*0.16);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy2, rx*0.86, ry*0.48, 0, Math.PI, 0, true);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawMouth(m) {
+  const {cx,topY,bottomY,width} = m;
+  const mH = Math.max(bottomY-topY, 3);
+  const hw  = width/2;
+  const op  = mouth * mH * 2.6;
+
+  ctx.save();
+
+  // Paper gradient patch — erases original static mouth
+  const g = ctx.createRadialGradient(cx, topY+mH*.45+op*.3, 2, cx, topY+mH*.45+op*.3, hw*.95);
+  g.addColorStop(0,   PAPER());
+  g.addColorStop(.55, PAPER());
+  g.addColorStop(1,   `rgba(${CFG.paper.r},${CFG.paper.g},${CFG.paper.b},0)`);
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.ellipse(cx, topY+mH*.45+op*.3, hw*.88, mH*.9+op*.65, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Dark mouth interior
+  if (op > 0.5) {
+    ctx.fillStyle = 'rgba(12,6,3,.82)';
+    ctx.beginPath();
+    ctx.ellipse(cx, topY+mH*.5+op*.22, hw*.54*Math.min(1,mouth*2), op*.46, 0, 0, Math.PI*2);
+    ctx.fill();
+    // Teeth
+    if (mouth > 0.2) {
+      ctx.fillStyle = 'rgba(246,242,236,.95)';
+      ctx.beginPath();
+      ctx.ellipse(cx, topY+op*.09, hw*.44*Math.min(1,mouth*1.6), op*.32, 0, 0, Math.PI, false);
+      ctx.fill();
+    }
+  }
+
+  // Ink lips
+  const lw = Math.max(1.2, mH*.15);
+  ctx.strokeStyle = INK();
+  ctx.lineWidth = lw;
+  ctx.lineCap = 'round';
+
+  // Upper lip — cupid's bow
+  ctx.beginPath();
+  ctx.moveTo(cx - hw*.94, topY);
+  ctx.quadraticCurveTo(cx - hw*.42, topY - mH*.4, cx, topY - mH*.44);
+  ctx.quadraticCurveTo(cx + hw*.42, topY - mH*.4, cx + hw*.94, topY);
+  ctx.stroke();
+
+  // Lower lip — shifts down with opening
+  ctx.beginPath();
+  ctx.moveTo(cx - hw*.94, topY);
+  ctx.quadraticCurveTo(cx, bottomY + op*.8 + mH*.3, cx + hw*.94, topY);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+// ============================================================
+//  BLINK SCHEDULER
+// ============================================================
+function scheduleBlink() {
+  clearTimeout(blinkTmr);
+  blinkTmr = setTimeout(()=>{ blinkAnim={t:0,dur:.13}; scheduleBlink(); }, 1700 + Math.random()*3800);
+}
+
+// ============================================================
+//  CHAT STATE
+// ============================================================
+function setCS(s) {
+  cs=s;
+  const map={idle:'Pripravená',listening:'Počúvam…',thinking:'Premýšľa…',speaking:'Hovorí…'};
+  $status.textContent = map[s]||'';
+  $ring.classList.toggle('on', s==='listening');
+  $mic.classList.toggle('on', s==='listening');
+}
+
+function addBub(txt, role) {
+  const d=document.createElement('div');
+  d.className='bub '+role; d.textContent=txt;
+  $chat.appendChild(d); $chat.scrollTop=$chat.scrollHeight;
+  $hint.style.display='none';
+}
+
+// ============================================================
+//  VOICE SELECTION (gender-aware)
+// ============================================================
+function pickVoice(gender) {
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return null;
+
+  const fNames = ['zuzana','female','anna','samantha','victoria','karen','zira','tessa','eva','alice','fiona','veena','moira'];
+  const mNames = ['male','stefan','daniel','alex','david','mark','thomas','jorge','luca','diego'];
+  const want   = gender==='female' ? fNames : mNames;
+
+  // Priority: SK > CS > EN > any
+  const pools = [
+    voices.filter(v=>v.lang.startsWith('sk')),
+    voices.filter(v=>v.lang.startsWith('cs')),
+    voices.filter(v=>v.lang.startsWith('en')),
+    voices
+  ];
+  for (const pool of pools) {
+    const hit = pool.find(v=>want.some(n=>v.name.toLowerCase().includes(n)));
+    if (hit) return hit;
+  }
+  for (const pool of pools) { if (pool.length) return pool[0]; }
+  return null;
+}
+
+// ============================================================
+//  TTS
+// ============================================================
+function speak(txt) {
+  if (!window.speechSynthesis) { setCS('idle'); return; }
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(txt);
+  u.pitch = detGender==='female' ? 1.20 : 0.82;
+  u.rate  = detGender==='female' ? 0.94 : 0.87;
+  const v = pickVoice(detGender);
+  if (v) { u.voice=v; u.lang=v.lang; }
+  u.onstart = () => { setCS('speaking'); speakT=0; };
+  u.onend = u.onerror = () => setCS('idle');
+  window.speechSynthesis.speak(u);
+}
+
+// ============================================================
+//  CLAUDE CHAT API
+// ============================================================
+async function askClaude(txt) {
+  setCS('thinking');
+  addBub(txt, 'user');
+  chatHistory.push({ role:'user', content:txt });
+  if (chatHistory.length > 8) chatHistory = chatHistory.slice(-8);
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'x-api-key':CFG.apiKey, 'anthropic-version':'2023-06-01' },
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514', max_tokens:1000,
+        system:'Si priateľský AI asistent. Odpovedaj stručne (1–3 vety), konverzačne. Hovor v jazyku, ktorým ťa oslovia.',
+        messages: chatHistory
+      })
+    });
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    const reply = data.content?.find(b=>b.type==='text')?.text || '…';
+    chatHistory.push({ role:'assistant', content:reply });
+    if (chatHistory.length > 8) chatHistory = chatHistory.slice(-8);
+    addBub(reply, 'ai');
+    speak(reply);
+  } catch(e) { addBub('Chyba: '+e.message,'ai'); setCS('idle'); }
+}
+
+// ============================================================
+//  SPEECH RECOGNITION
+// ============================================================
+function startListening() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { addBub('STT nie je podporované. Použi Chrome alebo Edge.','ai'); return; }
+  recog = new SR();
+  recog.lang='sk-SK'; recog.interimResults=false;
+  recog.onstart  = ()=>setCS('listening');
+  recog.onresult = e=>{ recog=null; askClaude(e.results[0][0].transcript); };
+  recog.onerror  = ()=>{ recog=null; setCS('idle'); };
+  recog.onend    = ()=>{ if(cs==='listening') setCS('idle'); };
+  try { recog.start(); } catch { setCS('idle'); }
+}
+
+$mic.addEventListener('click', ()=>{
+  if (cs==='speaking') { window.speechSynthesis?.cancel(); setCS('idle'); }
+  else if (cs==='listening') { recog?.stop(); recog=null; setCS('idle'); }
+  else if (cs==='idle' && sketchCvs) startListening();
+});
+
+window.speechSynthesis?.getVoices();
+if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = ()=>{};
+</script>
+</body>
+</html>
